@@ -5,14 +5,13 @@ import tensorflow as tf
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
-from tensorflow.keras import Sequential
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+from tensorflow.keras import layers, Sequential
+from tensorflow.keras.callbacks import EarlyStopping
 import os
 import cv2
-from tensorflow.keras import layers
-from tensorflow import keras
+import json
 
-def load_and_preprocess_images(file_paths, labels, image_size=50):
+def load_and_preprocess_images(file_paths, labels, image_size=100):
     data = []
     for path, label in zip(file_paths, labels):
         img = tf.keras.preprocessing.image.load_img(path, target_size=(image_size, image_size), color_mode='grayscale')
@@ -38,7 +37,7 @@ def load_data_and_preprocess(data_path):
 
     return X, y
 
-def resize_img(img, shape=(50, 50)):
+def resize_img(img, shape=(64, 64)):
     img = cv2.resize(img, shape)
     img = np.array(img)
     return img
@@ -47,56 +46,77 @@ def split_and_normalize_data(X, y, test_size=0.2):
     train_images, test_images, train_labels, test_labels = train_test_split(X, y, test_size=test_size, random_state=42)
 
     train_images = np.array([resize_img(img) for img in train_images]) / 255.
-    train_images = np.reshape(train_images, (len(train_images), 50, 50, 1))
+    train_images = np.reshape(train_images, (len(train_images), 64, 64, 1))
 
     test_images = np.array([resize_img(img) for img in test_images]) / 255.
-    test_images = np.reshape(test_images, (len(test_images), 50, 50, 1))
+    test_images = np.reshape(test_images, (len(test_images), 64, 64, 1))
 
     return train_images, test_images, train_labels, test_labels
 
-def build_model(learning_rate=0.001, dropout_rate=0.2, conv1_filters=32, conv2_filters=32):
+def build_model(learning_rate=0.0001, dropout_rate=0.5, conv1_filters=128, conv2_filters=256):
     with tf.device('/cpu:0'):
-        # use optimizer='adam' for training
-        adam_optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
-
         model = Sequential([
-            layers.Conv2D(conv1_filters, 3, activation='relu', input_shape=(50, 50, 1)),
-            layers.Conv2D(conv2_filters, 3, activation='relu'),
-            layers.MaxPooling2D(pool_size=(2, 2)),
+            layers.Conv2D(filters=conv1_filters, kernel_size=(11, 11), strides=(4, 4), activation='relu', input_shape=(64, 64, 1)),
+            layers.BatchNormalization(),
+            layers.MaxPool2D(pool_size=(2, 2)),
+            layers.Conv2D(filters=conv2_filters, kernel_size=(5, 5), strides=(1, 1), activation='relu', padding="same"),
+            layers.BatchNormalization(),
+            layers.MaxPool2D(pool_size=(3, 3)),
+            layers.Conv2D(filters=conv2_filters, kernel_size=(3, 3), strides=(1, 1), activation='relu', padding="same"),
+            layers.BatchNormalization(),
+            layers.Conv2D(filters=conv2_filters, kernel_size=(1, 1), strides=(1, 1), activation='relu', padding="same"),
+            layers.BatchNormalization(),
+            layers.Conv2D(filters=conv2_filters, kernel_size=(1, 1), strides=(1, 1), activation='relu', padding="same"),
+            layers.BatchNormalization(),
+            layers.MaxPool2D(pool_size=(2, 2)),
             layers.Flatten(),
+            layers.Dense(1024, activation='relu'),
             layers.Dropout(dropout_rate),
-            layers.Dense(1, activation='sigmoid', name='gender')
+            layers.Dense(1024, activation='relu'),
+            layers.Dropout(dropout_rate),
+            layers.Dense(1, activation='sigmoid')
         ])
         
+        optimizer = tf.optimizers.Adam(learning_rate)
         model.compile(
-            optimizer=adam_optimizer,
-            loss='binary_crossentropy',
-            metrics=['accuracy']
+            optimizer=optimizer,
+            loss=tf.keras.losses.BinaryCrossentropy(),
+            metrics=['accuracy'],
         )
 
         return model
 
+
 def train_model(model, train_images, train_labels, test_images, test_labels, epochs=100):
     early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
-    model_checkpoint = ModelCheckpoint(
-        filepath='/Users/rianrachmanto/miniforge3/project/eyesgender/model/trained_model.h5',
-        monitor='val_loss',
-        save_best_only=True,
-        mode='min',
-        verbose=1
-    )
 
     train_images_gen = ImageDataGenerator(rotation_range=90, zoom_range=0.3, width_shift_range=0.3)
-    train_images_aug = train_images_gen.flow(x=train_images, y=train_labels, batch_size=64)
+    train_images_aug = train_images_gen.flow(x=train_images, y=train_labels, batch_size=32)
 
     history = model.fit(
         train_images_aug,
         epochs=epochs,
         validation_data=(test_images, test_labels),
-        callbacks=[early_stopping, model_checkpoint]
+        callbacks=[early_stopping]
     )
 
     return history
+
+def save_model_and_hyperparameters(model, history):
+    model.save('trained_model.h5')
+
+    hyperparameters = {
+        'learning_rate': 0.0001,
+        'dropout_rate': 0.5,
+        'conv1_filters': 128,
+        'conv2_filters': 256
+    }
+
+    if isinstance(model.layers[17], tf.keras.layers.Dropout):
+        hyperparameters['dropout_rate'] = model.layers[17].rate
+
+    with open('hyperparameters.json', 'w') as f:
+        json.dump(hyperparameters, f)
 
 def main():
     data_path = Path('/Users/rianrachmanto/miniforge3/project/eyesgender/data/eyesfiles')
@@ -107,7 +127,7 @@ def main():
     model = build_model(learning_rate=0.0001, dropout_rate=0.5, conv1_filters=128, conv2_filters=256)
     
     history = train_model(model, train_images, train_labels, test_images, test_labels)
-    # No need to save hyperparameters as json
+    save_model_and_hyperparameters(model, history)
 
 if __name__ == "__main__":
     main()
