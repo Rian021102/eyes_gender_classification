@@ -77,7 +77,7 @@ def build_model():
             layers.Dense(1, activation='sigmoid')
         ])
         
-        optimizer = tf.optimizers.Adam(0.0001)
+        optimizer = tf.optimizers.Adam(0.001)
         model.compile(
             optimizer=optimizer,
             loss=tf.keras.losses.BinaryCrossentropy(),
@@ -102,10 +102,10 @@ def train_model(model, train_images, train_labels, test_images, test_labels, epo
     return history
 
 def save_model_and_hyperparameters(model, history):
-    model.save('trained_model.h5')
+    model.save('/Users/rianrachmanto/miniforge3/project/eyesgender/model/best_model.h5')
 
     hyperparameters = {
-        'learning_rate': 0.0001,
+        'learning_rate': 0.001,
         'dropout_rate': 0.5,
         'conv1_filters': 128,
         'conv2_filters': 256

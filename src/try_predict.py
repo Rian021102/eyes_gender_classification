@@ -22,11 +22,11 @@ def make_prediction(model, image_array):
 def display_image_with_prediction(image_array, prediction, threshold=0.4):
     gender_label = 'Male' if prediction[0][0] >= threshold else 'Female'
     plt.imshow(np.squeeze(image_array), cmap='gray')  # Display the grayscale image
-    plt.title(f"Prediction: {gender_label}")
+    plt.title(f"Prediction: {gender_label} with probability {prediction[0][0]:.2f}")
     plt.show()
 
 def main():
-    data_path = Path('/Users/rianrachmanto/miniforge3/project/eyesgender/data/images.jpeg')  # Update with the path to the image you want to predict
+    data_path = Path('/Users/rianrachmanto/miniforge3/project/eyesgender/data/360_F_55092987_uWxxwrInmIaPA68uE8ntECds4Fg28pls.jpg')  # Update with the path to the image you want to predict
     image_array = load_and_preprocess_image(str(data_path))
 
     # Load trained model
