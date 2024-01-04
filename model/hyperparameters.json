@@ -1,0 +1,1 @@
+{"learning_rate": 0.0001, "dropout_rate": 0.5, "conv1_filters": 128, "conv2_filters": 256}
