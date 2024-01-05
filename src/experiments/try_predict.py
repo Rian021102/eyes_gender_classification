@@ -26,7 +26,7 @@ def display_image_with_prediction(image_array, prediction, threshold=0.4):
     plt.show()
 
 def main():
-    data_path = Path('/Users/rianrachmanto/miniforge3/project/eyesgender/data/360_F_55092987_uWxxwrInmIaPA68uE8ntECds4Fg28pls.jpg')  # Update with the path to the image you want to predict
+    data_path = Path('/Users/rianrachmanto/miniforge3/project/eyesgender/test_images/5bb5ed0724000050009811ab.jpeg')  # Update with the path to the image you want to predict
     image_array = load_and_preprocess_image(str(data_path))
 
     # Load trained model
