@@ -9,7 +9,9 @@ from tensorflow.keras import layers, Sequential
 from tensorflow.keras.callbacks import EarlyStopping
 import os
 import cv2
-import json
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 def load_and_preprocess_images(file_paths, labels, image_size=100):
     data = []
@@ -53,42 +55,44 @@ def split_and_normalize_data(X, y, test_size=0.2):
 
     return train_images, test_images, train_labels, test_labels
 
+
 def build_model():
     with tf.device('/cpu:0'):
+        adam_optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
         model = Sequential([
-            layers.Conv2D(filters=128, kernel_size=(11, 11), strides=(4, 4), activation='relu', input_shape=(64, 64, 1)),
+            layers.Conv2D(filters=128, kernel_size=(11, 11), strides=(4, 4), activation='sigmoid', input_shape=(64, 64, 1)),
             layers.BatchNormalization(),
             layers.MaxPool2D(pool_size=(2, 2)),
-            layers.Conv2D(filters=256, kernel_size=(5, 5), strides=(1, 1), activation='relu', padding="same"),
+            layers.Conv2D(filters=256, kernel_size=(5, 5), strides=(1, 1), activation='sigmoid', padding="same"),
             layers.BatchNormalization(),
             layers.MaxPool2D(pool_size=(3, 3)),
-            layers.Conv2D(filters=256, kernel_size=(3, 3), strides=(1, 1), activation='relu', padding="same"),
+            layers.Conv2D(filters=256, kernel_size=(3, 3), strides=(1, 1), activation='sigmoid', padding="same"),
             layers.BatchNormalization(),
-            layers.Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), activation='relu', padding="same"),
+            layers.Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), activation='sigmoid', padding="same"),
             layers.BatchNormalization(),
-            layers.Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), activation='relu', padding="same"),
+            layers.Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), activation='sigmoid', padding="same"),
             layers.BatchNormalization(),
             layers.MaxPool2D(pool_size=(2, 2)),
             layers.Flatten(),
-            layers.Dense(1024, activation='relu'),
+            layers.Dense(1024, activation='sigmoid'),
             layers.Dropout(0.5),
-            layers.Dense(1024, activation='relu'),
+            layers.Dense(1024, activation='sigmoid'),
             layers.Dropout(0.5),
             layers.Dense(1, activation='sigmoid')
         ])
-        
-        optimizer = tf.optimizers.Adam(0.001)
-        model.compile(
-            optimizer=optimizer,
-            loss=tf.keras.losses.BinaryCrossentropy(),
-            metrics=['accuracy'],
-        )
+        model.compile(optimizer=adam_optimizer, loss='binary_crossentropy', metrics=['accuracy'])
+        print(model.summary())
 
-        return model
+    return model
 
 def train_model(model, train_images, train_labels, test_images, test_labels, epochs=100):
-    early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
+    modelcheckpoint = tf.keras.callbacks.ModelCheckpoint(
+        filepath='/Users/rianrachmanto/miniforge3/project/eyesgender/model/trained_test_model3.h5',
+        monitor='val_accuracy',
+        mode='max',
+        save_best_only=True
 
+    )
     train_images_gen = ImageDataGenerator(rotation_range=90, zoom_range=0.3, width_shift_range=0.3)
     train_images_aug = train_images_gen.flow(x=train_images, y=train_labels, batch_size=32)
 
@@ -96,31 +100,52 @@ def train_model(model, train_images, train_labels, test_images, test_labels, epo
         train_images_aug,
         epochs=epochs,
         validation_data=(test_images, test_labels),
-        callbacks=[early_stopping]
+        callbacks=[modelcheckpoint]
     )
 
     return history
 
-def save_model_and_hyperparameters(model, history):
-    model.save('/Users/rianrachmanto/miniforge3/project/eyesgender/model/best_model.h5')
+def evaluate_model(model,history,test_images, test_labels):
+    #print confusion matrix
+    y_pred = model.predict(test_images)
+    y_pred = np.round(y_pred).astype(int)
+    print(confusion_matrix(test_labels, y_pred))
+    #plot confusion matrix
+    cm = confusion_matrix(test_labels, y_pred)
+    plt.figure(figsize=(5,5))
+    sns.heatmap(cm, annot=True, fmt="d")
+    plt.title('Confusion matrix')
+    plt.ylabel('Actual label')
+    plt.xlabel('Predicted label')
+    plt.show()
+    #plot accuracy and loss
+    plt.figure(figsize=(10,5))
+    plt.subplot(1,2,1)
+    plt.plot(history.history['accuracy'], label='Train accuracy')
+    plt.plot(history.history['val_accuracy'], label='Validation accuracy')
+    plt.legend()
+    plt.title('Accuracy')
+    plt.subplot(1,2,2)
+    plt.plot(history.history['loss'], label='Train loss')
+    plt.plot(history.history['val_loss'], label='Validation loss')
+    plt.legend()
+    plt.title('Loss')
+    plt.show()
 
-    hyperparameters = {
-        'learning_rate': 0.001,
-        'dropout_rate': 0.5,
-        'conv1_filters': 128,
-        'conv2_filters': 256
-    }
-
-    with open('hyperparameters.json', 'w') as f:
-        json.dump(hyperparameters, f)
 
 def main():
     data_path = Path('/Users/rianrachmanto/miniforge3/project/eyesgender/data/eyesfiles')
     X, y = load_data_and_preprocess(data_path)
     train_images, test_images, train_labels, test_labels = split_and_normalize_data(X, y)
+    
+    # Pass hyperparameters to build_model function
     model = build_model()
+    
+    # Compile the model before training
+    #model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
+    
     history = train_model(model, train_images, train_labels, test_images, test_labels)
-    save_model_and_hyperparameters(model, history)
-
+    evaluate_model(model,history,test_images, test_labels)
+   
 if __name__ == "__main__":
     main()

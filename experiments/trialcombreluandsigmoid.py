@@ -9,7 +9,9 @@ from tensorflow.keras import layers, Sequential
 from tensorflow.keras.callbacks import EarlyStopping
 import os
 import cv2
-import json
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 def load_and_preprocess_images(file_paths, labels, image_size=100):
     data = []
@@ -81,19 +83,52 @@ def build_model():
     return model
 
 def train_model(model, train_images, train_labels, test_images, test_labels, epochs=100):
+    modelcheckpoint = tf.keras.callbacks.ModelCheckpoint(
+        filepath='/Users/rianrachmanto/miniforge3/project/eyesgender/model/trained_test_model1.h5',
+        monitor='val_accuracy',
+        mode='max',
+        save_best_only=True
+
+    )
     train_images_gen = ImageDataGenerator(rotation_range=90, zoom_range=0.3, width_shift_range=0.3)
     train_images_aug = train_images_gen.flow(x=train_images, y=train_labels, batch_size=32)
 
     history = model.fit(
         train_images_aug,
         epochs=epochs,
-        validation_data=(test_images, test_labels)
+        validation_data=(test_images, test_labels),
+        callbacks=[modelcheckpoint]
     )
 
     return history
 
-def save_model_and_hyperparameters(model, history):
-    model.save('/Users/rianrachmanto/miniforge3/project/eyesgender/model/trained_test_model.h5')
+def evaluate_model(model,history,test_images, test_labels):
+    #print confusion matrix
+    y_pred = model.predict(test_images)
+    y_pred = np.round(y_pred).astype(int)
+    print(confusion_matrix(test_labels, y_pred))
+    #plot confusion matrix
+    cm = confusion_matrix(test_labels, y_pred)
+    plt.figure(figsize=(5,5))
+    sns.heatmap(cm, annot=True, fmt="d")
+    plt.title('Confusion matrix')
+    plt.ylabel('Actual label')
+    plt.xlabel('Predicted label')
+    plt.show()
+    #plot accuracy and loss
+    plt.figure(figsize=(10,5))
+    plt.subplot(1,2,1)
+    plt.plot(history.history['accuracy'], label='Train accuracy')
+    plt.plot(history.history['val_accuracy'], label='Validation accuracy')
+    plt.legend()
+    plt.title('Accuracy')
+    plt.subplot(1,2,2)
+    plt.plot(history.history['loss'], label='Train loss')
+    plt.plot(history.history['val_loss'], label='Validation loss')
+    plt.legend()
+    plt.title('Loss')
+    plt.show()
+
 
 def main():
     data_path = Path('/Users/rianrachmanto/miniforge3/project/eyesgender/data/eyesfiles')
@@ -107,7 +142,7 @@ def main():
     model.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
     
     history = train_model(model, train_images, train_labels, test_images, test_labels)
-    save_model_and_hyperparameters(model, history)
-
+    evaluate_model(model,history,test_images, test_labels)
+   
 if __name__ == "__main__":
     main()

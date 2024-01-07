@@ -13,7 +13,7 @@ from tensorflow.keras.layers import Conv2D, MaxPooling2D, Dropout, Flatten, Dens
 from tensorflow.keras import layers
 
 
-def build_model_find(learning_rate=0.0001):
+def build_model_find(learning_rate=0.00001):
     with tf.device('/cpu:0'):
         # use optimizer='adam' for training
         adam_optimizer = keras.optimizers.Adam(learning_rate=learning_rate)
@@ -48,8 +48,10 @@ def train_model_find(CNN, X_train, y_train, X_test, y_test):
         mode='min',
         verbose=1
     )
+    earlystopping=EarlyStopping(monitor='val_loss', patience=10,
+                                verbose=1, mode='min', restore_best_weights=True)
     CNN_history = CNN.fit(X_train, y_train, epochs=50, validation_data=(X_test, y_test),
-                          verbose=1,callbacks=[model_checkpoint])
+                          verbose=1,callbacks=[model_checkpoint,earlystopping])
     
     return CNN_history
 

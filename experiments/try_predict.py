@@ -12,7 +12,7 @@ def load_and_preprocess_image(file_path, image_size=64):
     img_array = np.expand_dims(img_array, axis=0) / 255.0
     return img_array
 
-def load_trained_model(model_path='/Users/rianrachmanto/miniforge3/project/eyesgender/model/trained_test_model.h5'):  # Update with the path to your trained model file
+def load_trained_model(model_path='/Users/rianrachmanto/miniforge3/project/eyesgender/model/trained_test_model3.h5'):  # Update with the path to your trained model file
     return tf.keras.models.load_model(model_path)
 
 def make_prediction(model, image_array):
@@ -26,7 +26,7 @@ def display_image_with_prediction(image_array, prediction, threshold=0.4):
     plt.show()
 
 def main():
-    data_path = Path('/Users/rianrachmanto/miniforge3/project/eyesgender/test_images/5bb5ed0724000050009811ab.jpeg')  # Update with the path to the image you want to predict
+    data_path = Path('/Users/rianrachmanto/miniforge3/project/eyesgender/test_images/360_F_55092987_uWxxwrInmIaPA68uE8ntECds4Fg28pls.jpg')  # Update with the path to the image you want to predict
     image_array = load_and_preprocess_image(str(data_path))
 
     # Load trained model
@@ -36,7 +36,7 @@ def main():
     prediction = make_prediction(model, image_array)
 
     # Display the image with prediction (threshold set to 0.4)
-    display_image_with_prediction(image_array, prediction, threshold=0.5)
+    display_image_with_prediction(image_array, prediction, threshold=0.4)
 
 if __name__ == "__main__":
     main()

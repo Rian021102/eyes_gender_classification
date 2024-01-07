@@ -27,7 +27,7 @@ def display_image_with_prediction(image_array, prediction, threshold=0.5):
     plt.show()
 
 def main():
-    data_path = Path('/Users/rianrachmanto/miniforge3/project/eyesgender/test_images/5bb5ed0724000050009811ab.jpeg')  # Update with the path to the image you want to predict
+    data_path = Path('/Users/rianrachmanto/miniforge3/project/eyesgender/test_images/images.jpeg')  # Update with the path to the image you want to predict
     image_array = load_and_preprocess_image(str(data_path))
 
     # Load trained model
@@ -37,7 +37,7 @@ def main():
     prediction = make_prediction(model, image_array)
 
     # Display the image with prediction (threshold set to 0.5)
-    display_image_with_prediction(image_array, prediction, threshold=0.4)
+    display_image_with_prediction(image_array, prediction, threshold=0.5)
 
 if __name__ == "__main__":
     main()
