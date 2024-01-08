@@ -64,25 +64,25 @@ def split_and_normalize_data(X, y, test_size=0.2):
 
 def build_model():
     with tf.device('/cpu:0'):
-        adam_optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
+        adam_optimizer = tf.keras.optimizers.Adam(learning_rate=0.00001)
         model = Sequential([
-            layers.Conv2D(filters=128, kernel_size=(11, 11), strides=(4, 4), activation='sigmoid', input_shape=(64, 64, 1)),
+            layers.Conv2D(filters=128, kernel_size=(11, 11), strides=(4, 4), activation='relu', input_shape=(64, 64, 1)),
             layers.BatchNormalization(),
             layers.MaxPool2D(pool_size=(2, 2)),
-            layers.Conv2D(filters=256, kernel_size=(5, 5), strides=(1, 1), activation='sigmoid', padding="same"),
+            layers.Conv2D(filters=256, kernel_size=(5, 5), strides=(1, 1), activation='relu', padding="same"),
             layers.BatchNormalization(),
             layers.MaxPool2D(pool_size=(3, 3)),
-            layers.Conv2D(filters=256, kernel_size=(3, 3), strides=(1, 1), activation='sigmoid', padding="same"),
+            layers.Conv2D(filters=256, kernel_size=(3, 3), strides=(1, 1), activation='relu', padding="same"),
             layers.BatchNormalization(),
-            layers.Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), activation='sigmoid', padding="same"),
+            layers.Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), activation='relu', padding="same"),
             layers.BatchNormalization(),
-            layers.Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), activation='sigmoid', padding="same"),
+            layers.Conv2D(filters=256, kernel_size=(1, 1), strides=(1, 1), activation='relu', padding="same"),
             layers.BatchNormalization(),
             layers.MaxPool2D(pool_size=(2, 2)),
             layers.Flatten(),
-            layers.Dense(1024, activation='sigmoid'),
+            layers.Dense(1024, activation='relu'),
             layers.Dropout(0.5),
-            layers.Dense(1024, activation='sigmoid'),
+            layers.Dense(1024, activation='relu'),
             layers.Dropout(0.5),
             layers.Dense(1, activation='sigmoid')
         ])
@@ -93,21 +93,27 @@ def build_model():
     return model
 
 def train_model(model, train_images, train_labels, test_images, test_labels, epochs=100):
+    earlystop=EarlyStopping(
+        monitor='val_loss',
+        patience=10,
+        mode='min',
+        restore_best_weights=True)
+    
     modelcheckpoint = tf.keras.callbacks.ModelCheckpoint(
-        filepath='/Users/rianrachmanto/miniforge3/project/eyesgender/model/trained_test_model4.h5',
-        monitor='val_accuracy',
-        mode='max',
+        filepath='/Users/rianrachmanto/miniforge3/project/eyesgender/model/trained_test_model7.h5',
+        monitor='val_loss',
+        mode='min',
         save_best_only=True
 
     )
     train_images_gen = ImageDataGenerator(rotation_range=90, zoom_range=0.3, width_shift_range=0.3)
-    train_images_aug = train_images_gen.flow(x=train_images, y=train_labels, batch_size=32)
+    train_images_aug = train_images_gen.flow(x=train_images, y=train_labels, batch_size=50)
 
     history = model.fit(
         train_images_aug,
         epochs=epochs,
         validation_data=(test_images, test_labels),
-        callbacks=[modelcheckpoint]
+        callbacks=[modelcheckpoint,earlystop]
     )
 
     return history
